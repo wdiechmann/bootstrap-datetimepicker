@@ -52,13 +52,14 @@
       this.language = options.language in dates ? options.language : 'en'
       this.pickDate = options.pickDate;
       this.pickTime = options.pickTime;
+	  this.showWeek = options.showWeek;
       this.isInput = this.$element.is('input');
       this.component = false;
       if (this.$element.find('.input-append') || this.$element.find('.input-prepend'))
           this.component = this.$element.find('.add-on');
       this.format = options.format;
       if (!this.format) {
-        if (this.isInput) this.format = this.$element.data('format');
+        if (this.isInput) this.format = this.get_element_data('format');
         else this.format = this.$element.find('input').data('format');
         if (!this.format) this.format = 'MM/dd/yyyy';
       }
@@ -78,7 +79,7 @@
         icon.addClass(this.dateIcon);
       }
       this.widget = $(getTemplate(this.timeIcon, options.pickDate, options.pickTime, options.pick12HourFormat, options.pickSeconds, options.collapse)).appendTo('body');
-      this.minViewMode = options.minViewMode||this.$element.data('date-minviewmode')||0;
+      this.minViewMode = options.minViewMode||this.get_element_data('date-minviewmode')||0;
       if (typeof this.minViewMode === 'string') {
         switch (this.minViewMode) {
           case 'months':
@@ -92,7 +93,7 @@
           break;
         }
       }
-      this.viewMode = options.viewMode||this.$element.data('date-viewmode')||0;
+      this.viewMode = options.viewMode||this.get_element_data('date-viewmode')||0;
       if (typeof this.viewMode === 'string') {
         switch (this.viewMode) {
           case 'months':
@@ -107,10 +108,10 @@
         }
       }
       this.startViewMode = this.viewMode;
-      this.weekStart = options.weekStart||this.$element.data('date-weekstart')||0;
+      this.weekStart = options.weekStart||this.get_element_data('date-weekstart')||0;
       this.weekEnd = this.weekStart === 0 ? 6 : this.weekStart - 1;
-      this.setStartDate(options.startDate || this.$element.data('date-startdate'));
-      this.setEndDate(options.endDate || this.$element.data('date-enddate'));
+      this.setStartDate(options.startDate || this.get_element_data('date-startdate'));
+      this.setEndDate(options.endDate || this.get_element_data('date-enddate'));
       this.fillDow();
       this.fillMonths();
       this.fillHours();
@@ -163,6 +164,16 @@
       });
       this._detachDatePickerGlobalEvents();
     },
+	
+	/* if this.$element is not the input element - find it
+	 * and return the data from there
+	 */
+	get_element_data: function(e){
+	  d = this.$element.data(e);
+	  if (d==undefined)
+		d = this.$element.find('input').data(e);
+		return d;
+	},
 
     set: function() {
       var formatted = '';
@@ -173,7 +184,7 @@
           input.val(formatted);
           this._resetMaskPos(input);
         }
-        this.$element.data('date', formatted);
+        this.get_element_data('date', formatted);
       } else {
         this.$element.val(formatted);
         this._resetMaskPos(this.$element);
@@ -337,6 +348,9 @@
     fillDow: function() {
       var dowCnt = this.weekStart;
       var html = $('<tr>');
+	  if (this.showWeek) {
+	  	html.append('<th class="dow">' + dates[this.language].week + '</th>');
+	  }
       while (dowCnt < this.weekStart + 7) {
         html.append('<th class="dow">' + dates[this.language].daysMin[(dowCnt++) % 7] + '</th>');
       }
@@ -394,6 +408,9 @@
       while (prevMonth.valueOf() < nextMonth) {
         if (prevMonth.getUTCDay() === this.weekStart) {
           row = $('<tr>');
+		  if (this.showWeek) {
+			  row.append('<td>' + this.iso8601Week(prevMonth) + '</td>');
+		  }
           html.push(row);
         }
         clsName = '';
@@ -548,6 +565,24 @@
       timeComponents.filter('[data-time-component=minutes]').text(minute);
       timeComponents.filter('[data-time-component=seconds]').text(second);
     },
+	
+
+	/* Set as calculateWeek to determine the week of the year based on the ISO 8601 definition.
+	 * @param  date  Date - the date to get the week for
+	 * @return  number - the number of the week within the year that contains this date
+	 */
+	iso8601Week: function(date) {
+		var time,
+			checkDate = new Date(date.getTime());
+
+		// Find Thursday of this week starting on Monday
+		checkDate.setDate(checkDate.getDate() + 4 - (checkDate.getDay() || 7));
+
+		time = checkDate.getTime();
+		checkDate.setMonth(0); // Compare with Jan 1
+		checkDate.setDate(1);
+		return Math.floor(Math.round((time - checkDate) / 86400000) / 7) + 1;
+	},
 
     click: function(e) {
       e.stopPropagation();
@@ -1091,8 +1126,10 @@
     maskInput: false,
     pickDate: true,
     pickTime: true,
+	showWeek: true,
     pick12HourFormat: false,
     pickSeconds: true,
+	weekStart: false,
     startDate: -Infinity,
     endDate: Infinity,
     collapse: true
@@ -1101,6 +1138,7 @@
   var dpgId = 0;
   var dates = $.fn.datetimepicker.dates = {
     en: {
+	  week: "week",
       days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
         "Friday", "Saturday", "Sunday"],
       daysShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
